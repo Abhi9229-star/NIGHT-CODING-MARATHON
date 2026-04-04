@@ -8,8 +8,21 @@ let app = express(); // object = {listen}
 
 // 4) declare routes -> app.http_method('endpoint', callback)
 
-app.get("/", () => {
-  console.log("executing");
+app.get("/", (req, res) => {
+  // req, res -> object
+  //   res.send("welcome");
+  //   res.json({
+  //     success: true,
+  //     message: "okay",
+  //     data: { userName: "abc" },
+  //   });
+
+  res.status(500).json({
+    // 500 internal server error
+    success: false,
+    message: "error occurred",
+    err: { name: "some error" },
+  });
 });
 
 // 3) assign a port number to our server
@@ -24,3 +37,5 @@ app.listen(9001, () => {
 // https://nodejs.org/en/ (/) =>  this is base url
 // https://nodejs.org/en/blog => /blog is one endpoint
 // https://nodejs.org/en/download
+
+// https://github.com/Sarvesh-1999/NIGHT-CODING-MARATHON
