@@ -34,8 +34,8 @@ const LandingPage = () => {
   return (
     <div className="relative overflow-hidden">
       <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_top_left,#fde68a_0%,transparent_30%),radial-gradient(circle_at_top_right,#fecdd3_0%,transparent_28%),linear-gradient(180deg,#fffdf7_0%,#f8fafc_52%,#eef2ff_100%)]" />
-      <div className="absolute left-[-4rem] top-28 -z-10 h-56 w-56 rounded-full bg-amber-200/30 blur-3xl" />
-      <div className="absolute right-[-3rem] top-16 -z-10 h-64 w-64 rounded-full bg-rose-200/35 blur-3xl" />
+      <div className="absolute -left-16 top-28 -z-10 h-56 w-56 rounded-full bg-amber-200/30 blur-3xl" />
+      <div className="absolute -right-12 top-16 -z-10 h-64 w-64 rounded-full bg-rose-200/35 blur-3xl" />
 
       <section className="mx-auto grid min-h-[calc(100vh-81px)] max-w-6xl items-center gap-14 px-4 py-12 sm:px-6 lg:grid-cols-[1.08fr_0.92fr]">
         <motion.div
@@ -126,7 +126,7 @@ const LandingPage = () => {
                 return (
                   <div
                     key={feature.title}
-                    className="rounded-[24px] border border-slate-200/80 bg-white/80 p-4"
+                    className="rounded-3xl border border-slate-200/80 bg-white/80 p-4"
                   >
                     <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-amber-50 text-amber-600">
                       <Icon className="h-5 w-5" />
