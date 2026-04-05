@@ -1,8 +1,12 @@
 import React from 'react'
+import LandingPage from './pages/LandingPage'
+import ErrorBanner from './components/ErrorBanner'
 
 const App = () => {
   return (
-    <div>App</div>
+    <div>
+      <ErrorBanner/>
+    </div>
   )
 }
 
