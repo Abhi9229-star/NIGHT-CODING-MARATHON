@@ -1,25 +1,32 @@
-import { MdRefresh } from "react-icons/md";
-import { TbAlertTriangle } from "react-icons/tb";
+import { HiMiniArrowPath, HiMiniExclamationTriangle } from "react-icons/hi2";
 
 const ErrorBanner = ({ message, onRetry }) => (
-  <div className="rounded-xl border border-red-200 bg-red-50 p-4 flex items-start justify-between gap-4">
-    <div className="flex items-start gap-3">
-      <TbAlertTriangle className="text-red-500 w-5 h-5 shrink-0 mt-0.5" />
-      <div>
-        <p className="text-red-700 text-sm font-semibold">
-          Failed to load questions
-        </p>
-        <p className="text-red-500 text-xs mt-0.5">{message}</p>
+  <div className="rounded-[28px] border border-rose-200 bg-[linear-gradient(135deg,#fff1f2,#fff7ed)] p-5 shadow-[0_20px_60px_-40px_rgba(225,29,72,0.4)]">
+    <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+      <div className="flex items-start gap-3">
+        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-rose-100 text-rose-600">
+          <HiMiniExclamationTriangle className="h-5 w-5" />
+        </div>
+        <div>
+          <p className="text-sm font-semibold uppercase tracking-[0.24em] text-rose-500">
+            Something went wrong
+          </p>
+          <h3 className="mt-1 text-lg font-bold text-slate-950">
+            Failed to load this session
+          </h3>
+          <p className="mt-2 text-sm leading-7 text-slate-600">{message}</p>
+        </div>
       </div>
+      {onRetry && (
+        <button
+          onClick={onRetry}
+          className="inline-flex items-center justify-center gap-2 rounded-full border border-rose-200 bg-white px-4 py-2.5 text-sm font-semibold text-rose-600 transition hover:-translate-y-0.5 hover:border-rose-300"
+        >
+          <HiMiniArrowPath className="h-4 w-4" />
+          Retry
+        </button>
+      )}
     </div>
-    {onRetry && (
-      <button
-        onClick={onRetry}
-        className="shrink-0 inline-flex items-center gap-1.5 text-xs text-red-600 hover:text-red-700 border border-red-300 hover:border-red-400 rounded-lg px-3 py-1.5 transition-colors font-medium bg-white"
-      >
-        <MdRefresh className="w-4 h-4" /> Retry
-      </button>
-    )}
   </div>
 );
 

@@ -1,30 +1,32 @@
-import { BsLightningChargeFill } from "react-icons/bs";
 import { ImSpinner8 } from "react-icons/im";
-import { TbBulb } from "react-icons/tb";
+import { HiMiniSparkles } from "react-icons/hi2";
 
 const EmptyState = ({ onGenerate, generating }) => (
-  <div className="flex flex-col items-center justify-center py-20 gap-4 text-center">
-    <div className="w-14 h-14 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center">
-      <TbBulb className="w-7 h-7 text-indigo-400" />
+  <div className="rounded-[30px] border border-white/70 bg-white/78 px-6 py-16 text-center shadow-[0_24px_80px_-40px_rgba(15,23,42,0.4)] backdrop-blur-xl">
+    <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-[24px] bg-[linear-gradient(135deg,#fde68a,#fb7185)] text-white shadow-[0_18px_40px_-20px_rgba(244,114,182,0.65)]">
+      <HiMiniSparkles className="h-7 w-7" />
     </div>
-    <div>
-      <p className="text-slate-700 font-semibold text-base">No questions yet</p>
-      <p className="text-slate-400 text-sm mt-1">
-        Generate AI-powered questions for this session.
-      </p>
-    </div>
+    <h3 className="mt-5 text-2xl font-bold text-slate-950">
+      No questions generated yet
+    </h3>
+    <p className="mx-auto mt-3 max-w-xl text-sm leading-7 text-slate-500 sm:text-base">
+      Start the session with a fresh AI-generated question set tailored to this
+      role, experience level, and your focus topics.
+    </p>
     <button
       onClick={onGenerate}
       disabled={generating}
-      className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-medium transition-colors shadow-sm"
+      className="mt-7 inline-flex items-center justify-center gap-2 rounded-full bg-[linear-gradient(135deg,#111827,#1f2937)] px-6 py-3 text-sm font-semibold text-white shadow-[0_20px_45px_-24px_rgba(15,23,42,0.85)] transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
     >
       {generating ? (
         <>
-          <ImSpinner8 className="animate-spin w-4 h-4" /> Generating…
+          <ImSpinner8 className="h-4 w-4 animate-spin" />
+          Generating...
         </>
       ) : (
         <>
-          <BsLightningChargeFill className="w-4 h-4" /> Generate Questions
+          <HiMiniSparkles className="h-4 w-4" />
+          Generate Questions
         </>
       )}
     </button>

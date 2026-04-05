@@ -1,6 +1,6 @@
-import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
+import express from "express";
 
 import { connectDB } from "./config/database-config.js";
 import { errorHandler, notFound } from "./middlewares/error-middleware.js";

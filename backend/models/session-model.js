@@ -1,7 +1,3 @@
-// session role -> mern full stack, java full stack ,frontend
-// exp => 2, 1, 10
-// userId => this will store ref
-
 import mongoose from "mongoose";
 
 const sessionSchema = new mongoose.Schema(

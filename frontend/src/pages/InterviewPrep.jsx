@@ -34,29 +34,149 @@ const parseError = (err) => {
   return err.message || "Something went wrong.";
 };
 
-const buildDownloadContent = (session, questions) => {
-  const lines = [
-    "NightMarathon Interview Prep",
-    `Role: ${session?.role || "Untitled Session"}`,
-    `Experience: ${session?.experience || "N/A"}`,
-    `Topics: ${session?.topicsToFocus || "General"}`,
-    `Description: ${session?.description || "N/A"}`,
-    "",
-    `Questions: ${questions.length}`,
-    "",
-  ];
+const escapeHtml = (value = "") =>
+  value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 
-  questions.forEach((question, index) => {
-    lines.push(`${index + 1}. ${question.question}`);
-    lines.push("");
-    lines.push("Answer:");
-    lines.push(question.answer || "No answer available.");
-    lines.push("");
-    lines.push("----------------------------------------");
-    lines.push("");
-  });
+const buildPdfMarkup = (session, questions) => {
+  const cards = questions
+    .map(
+      (question, index) => `
+        <section class="question-card">
+          <div class="question-index">${String(index + 1).padStart(2, "0")}</div>
+          <h2>${escapeHtml(question.question)}</h2>
+          <div class="answer">${escapeHtml(
+            question.answer || "No answer available.",
+          ).replace(/\n/g, "<br />")}</div>
+        </section>
+      `,
+    )
+    .join("");
 
-  return lines.join("\n");
+  return `
+    <!doctype html>
+    <html lang="en">
+      <head>
+        <meta charset="utf-8" />
+        <title>${escapeHtml(session?.role || "Interview Questions")} PDF</title>
+        <style>
+          * { box-sizing: border-box; }
+          body {
+            margin: 0;
+            padding: 40px;
+            font-family: Arial, sans-serif;
+            background: #fffdf8;
+            color: #0f172a;
+          }
+          .sheet {
+            max-width: 900px;
+            margin: 0 auto;
+          }
+          .hero {
+            border: 1px solid #fde68a;
+            border-radius: 24px;
+            padding: 28px;
+            background: linear-gradient(135deg, #fff7ed, #ffffff);
+            margin-bottom: 28px;
+          }
+          .eyebrow {
+            margin: 0 0 10px;
+            color: #d97706;
+            font-size: 12px;
+            letter-spacing: 0.25em;
+            text-transform: uppercase;
+            font-weight: bold;
+          }
+          h1 {
+            margin: 0;
+            font-size: 32px;
+            line-height: 1.1;
+          }
+          .meta {
+            margin-top: 14px;
+            color: #475569;
+            line-height: 1.7;
+            font-size: 14px;
+          }
+          .stats {
+            display: inline-block;
+            margin-top: 18px;
+            padding: 10px 16px;
+            border-radius: 999px;
+            background: #111827;
+            color: white;
+            font-size: 13px;
+            font-weight: bold;
+          }
+          .question-card {
+            position: relative;
+            border: 1px solid #e2e8f0;
+            border-radius: 22px;
+            padding: 26px;
+            background: white;
+            margin-bottom: 18px;
+            page-break-inside: avoid;
+          }
+          .question-index {
+            display: inline-block;
+            padding: 7px 12px;
+            border-radius: 999px;
+            background: #fff7ed;
+            color: #b45309;
+            font-size: 12px;
+            font-weight: bold;
+            margin-bottom: 14px;
+          }
+          h2 {
+            margin: 0 0 14px;
+            font-size: 21px;
+            line-height: 1.35;
+          }
+          .answer {
+            color: #334155;
+            line-height: 1.8;
+            font-size: 14px;
+            white-space: normal;
+          }
+          @media print {
+            body {
+              padding: 0;
+              background: white;
+            }
+            .hero,
+            .question-card {
+              box-shadow: none;
+            }
+          }
+        </style>
+      </head>
+      <body>
+        <main class="sheet">
+          <section class="hero">
+            <p class="eyebrow">NightMarathon Interview Prep</p>
+            <h1>${escapeHtml(session?.role || "Interview Questions")}</h1>
+            <div class="meta">
+              <div><strong>Experience:</strong> ${escapeHtml(
+                session?.experience || "N/A",
+              )}</div>
+              <div><strong>Topics:</strong> ${escapeHtml(
+                session?.topicsToFocus || "General",
+              )}</div>
+              <div><strong>Description:</strong> ${escapeHtml(
+                session?.description || "N/A",
+              )}</div>
+            </div>
+            <div class="stats">${questions.length} Questions</div>
+          </section>
+          ${cards}
+        </main>
+      </body>
+    </html>
+  `;
 };
 
 const InterviewPrep = () => {
@@ -129,22 +249,23 @@ const InterviewPrep = () => {
       return;
     }
 
-    const content = buildDownloadContent(session, questions);
-    const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    const safeRole = (session?.role || "interview-session")
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-|-$/g, "");
+    const printWindow = window.open("", "_blank", "width=1000,height=800");
 
-    link.href = url;
-    link.download = `${safeRole || "interview-session"}-questions.txt`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-    toast.success("Questions downloaded");
+    if (!printWindow) {
+      toast.error("Allow popups to export this session as PDF");
+      return;
+    }
+
+    printWindow.document.open();
+    printWindow.document.write(buildPdfMarkup(session, questions));
+    printWindow.document.close();
+    printWindow.focus();
+
+    printWindow.onload = () => {
+      printWindow.print();
+    };
+
+    toast.success("Print dialog opened. Choose Save as PDF.");
   };
 
   useEffect(() => {
@@ -214,7 +335,7 @@ const InterviewPrep = () => {
               className="inline-flex items-center justify-center gap-2 rounded-full border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-800 transition hover:-translate-y-0.5 hover:border-slate-300 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <HiMiniArrowDownTray className="h-4 w-4" />
-              Download Questions
+              Download PDF
             </button>
           </div>
         </section>
