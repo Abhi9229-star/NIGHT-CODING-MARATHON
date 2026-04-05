@@ -1,117 +1,92 @@
+import mongoose from "mongoose";
+
 import Question from "../models/question-model.js";
 import Session from "../models/session-model.js";
+import { asyncHandler } from "../utils/async-handler.js";
+import { createHttpError } from "../utils/http-error.js";
 
-// @desc    Create a new session and linked questions
-// @route   POST /api/sessions/create
-// @access  Private
-export const createSession = async (req, res) => {
-  try {
-    console.log(1);
-    const { role, experience, topicsToFocus, description, questions } =
-      req.body;
-    const userId = req.user._id; // Assuming you have a middleware setting req.user
-
-    // Create the session
-    const session = await Session.create({
-      user: userId,
-      role,
-      experience,
-      topicsToFocus,
-      description,
-    });
-
-    // Create questions and collect their IDs
-    const questionDocs = await Promise.all(
-      questions.map(async (q) => {
-        const question = await Question.create({
-          session: session._id,
-          question: q.question,
-          answer: q.answer || "",
-          note: q.note || "",
-          isPinned: q.isPinned || false,
-        });
-        return question._id;
-      }),
-    );
-
-    // Update session with question IDs
-    session.questions = questionDocs;
-    await session.save();
-
-    // Return the populated session
-    // const populatedSession = await Session.findById(session._id).populate(
-    //   "questions",
-    // );
-
-    // res.status(201).json({
-    //   success: true,
-    //   data: populatedSession,
-    // });
-    res.status(201).json({
-      success: true,
-      session,
-    });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({
-      success: false,
-      message: "Server Error",
-      error: error.message,
-    });
+const ensureValidSessionId = (sessionId) => {
+  if (!mongoose.Types.ObjectId.isValid(sessionId)) {
+    throw createHttpError(400, "Invalid session id");
   }
 };
 
-// @desc    Get all sessions for the logged-in user
-// @route   GET /api/sessions/my-sessions
-// @access  Private
-export const getMySessions = async (req, res) => {
-  try {
-    const userId = req.user._id;
+export const createSession = asyncHandler(async (req, res) => {
+  const { role, experience, topicsToFocus, description, questions } = req.body;
+  const userId = req.user._id;
 
-    const sessions = await Session.find({ user: userId })
-      .sort({ createdAt: -1 })
-      .populate("questions");
-
-    res.status(200).json({
-      success: true,
-      count: sessions.length,
-      sessions,
-    });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ success: false, message: "Server Error" });
+  if (!role?.trim() || !experience?.trim()) {
+    throw createHttpError(400, "Role and experience are required");
   }
-};
 
-// @desc    Get a session by ID with populated questions
-// @route   GET /api/sessions/:id
-// @access  Private
-export const getSessionById = async (req, res) => {
-  try {
-    const session = await Session.findById(req.params.id)
-      .populate("questions")
-      .populate("user", "name email");
-
-    if (!session) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Session not found" });
-    }
-
-    // Check if the session belongs to the logged-in user
-    if (session.user._id.toString() !== req.user._id.toString()) {
-      return res
-        .status(403)
-        .json({ success: false, message: "Not authorized" });
-    }
-
-    res.status(200).json({
-      success: true,
-      session,
-    });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ success: false, message: "Server Error" });
+  if (questions && !Array.isArray(questions)) {
+    throw createHttpError(400, "Questions must be an array");
   }
-};
 
+  const session = await Session.create({
+    user: userId,
+    role: role.trim(),
+    experience: experience.trim(),
+    topicsToFocus: topicsToFocus?.trim() || "",
+    description: description?.trim() || "",
+  });
+
+  const questionDocs = await Promise.all(
+    (questions || []).map(async (questionItem) => {
+      const question = await Question.create({
+        session: session._id,
+        question: questionItem.question,
+        answer: questionItem.answer || "",
+        note: questionItem.note || "",
+        isPinned: questionItem.isPinned || false,
+      });
+
+      return question._id;
+    }),
+  );
+
+  session.questions = questionDocs;
+  await session.save();
+
+  const populatedSession = await Session.findById(session._id).populate(
+    "questions",
+  );
+
+  res.status(201).json({
+    success: true,
+    session: populatedSession,
+  });
+});
+
+export const getMySessions = asyncHandler(async (req, res) => {
+  const sessions = await Session.find({ user: req.user._id })
+    .sort({ createdAt: -1 })
+    .populate("questions");
+
+  res.status(200).json({
+    success: true,
+    count: sessions.length,
+    sessions,
+  });
+});
+
+export const getSessionById = asyncHandler(async (req, res) => {
+  ensureValidSessionId(req.params.id);
+
+  const session = await Session.findById(req.params.id)
+    .populate("questions")
+    .populate("user", "name email");
+
+  if (!session) {
+    throw createHttpError(404, "Session not found");
+  }
+
+  if (session.user._id.toString() !== req.user._id.toString()) {
+    throw createHttpError(403, "Not authorized");
+  }
+
+  res.status(200).json({
+    success: true,
+    session,
+  });
+});

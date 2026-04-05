@@ -1,182 +1,216 @@
 import dotenv from "dotenv";
-dotenv.config();
 
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenerativeAI } from "@google/generative-ai";
+import mongoose from "mongoose";
+
 import Question from "../models/question-model.js";
 import Session from "../models/session-model.js";
+import { asyncHandler } from "../utils/async-handler.js";
+import { createHttpError } from "../utils/http-error.js";
 import {
   conceptExplainPrompt,
   questionAnswerPrompt,
 } from "../utils/prompts-util.js";
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+dotenv.config();
 
-// @desc    Generate + SAVE interview questions for a session
-// @route   POST /api/ai/generate-questions
-// @access  Private
-export const generateInterviewQuestions = async (req, res) => {
-  console.log("hi");
+const DEFAULT_QUESTION_COUNT = 10;
+const DEFAULT_GEMINI_MODEL = "gemini-2.5-flash";
+
+const cleanJsonResponse = (rawText = "") =>
+  rawText
+    .replace(/^```json\s*/i, "")
+    .replace(/^```\s*/i, "")
+    .replace(/```$/i, "")
+    .trim();
+
+const getGeminiModel = () => {
+  if (!process.env.GEMINI_API_KEY) {
+    throw createHttpError(500, "Gemini API key is not configured");
+  }
+
+  const modelName = process.env.GEMINI_MODEL || DEFAULT_GEMINI_MODEL;
+  const client = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+
+  return client.getGenerativeModel({
+    model: modelName,
+    generationConfig: {
+      responseMimeType: "application/json",
+    },
+  });
+};
+
+const parseJsonPayload = (rawText, type) => {
+  const cleanedText = cleanJsonResponse(rawText);
+
   try {
-    const { sessionId } = req.body; //! read sessionId, not role/experience
+    return JSON.parse(cleanedText);
+  } catch {
+    const fallbackPattern =
+      type === "array" ? /\[[\s\S]*\]/ : /\{[\s\S]*\}/;
+    const match = cleanedText.match(fallbackPattern);
 
-    if (!sessionId) {
-      return res
-        .status(400)
-        .json({ success: false, message: "sessionId is required" });
+    if (!match) {
+      throw createHttpError(502, "AI returned invalid JSON", cleanedText);
     }
 
-    //? 1. fetch session → get role, experience, topicsToFocus
-    const session = await Session.findById(sessionId);
-    if (!session) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Session not found" });
-    }
+    return JSON.parse(match[0]);
+  }
+};
 
-    if (session.user.toString() !== req.user._id.toString()) {
-      return res
-        .status(403)
-        .json({ success: false, message: "Not authorized" });
-    }
+const normalizeAiError = (error) => {
+  const message = error?.message || "Unexpected AI error";
+  const lowered = message.toLowerCase();
 
-    const { role, experience, topicsToFocus } = session;
-    console.log("session: ", session);
+  if (error.statusCode) {
+    return error;
+  }
 
-    //? 2. generate via Gemini
-    const prompt = questionAnswerPrompt(role, experience, topicsToFocus, 10);
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: prompt,
+  if (
+    lowered.includes("api key") ||
+    lowered.includes("quota") ||
+    lowered.includes("rate limit") ||
+    lowered.includes("not found for api version") ||
+    lowered.includes("503") ||
+    lowered.includes("overloaded") ||
+    lowered.includes("fetch failed")
+  ) {
+    return createHttpError(
+      502,
+      "AI service is currently unavailable",
+      message,
+    );
+  }
+
+  return createHttpError(500, "Failed to process AI request", message);
+};
+
+const validateSessionOwnership = async (sessionId, userId) => {
+  if (!mongoose.Types.ObjectId.isValid(sessionId)) {
+    throw createHttpError(400, "Invalid sessionId");
+  }
+
+  const session = await Session.findById(sessionId);
+
+  if (!session) {
+    throw createHttpError(404, "Session not found");
+  }
+
+  if (session.user.toString() !== userId.toString()) {
+    throw createHttpError(403, "Not authorized");
+  }
+
+  return session;
+};
+
+export const generateInterviewQuestions = asyncHandler(async (req, res) => {
+  const { sessionId, numberOfQuestions = DEFAULT_QUESTION_COUNT } = req.body;
+
+  if (!sessionId) {
+    throw createHttpError(400, "sessionId is required");
+  }
+
+  const parsedCount = Number(numberOfQuestions);
+  if (!Number.isInteger(parsedCount) || parsedCount < 1 || parsedCount > 20) {
+    throw createHttpError(
+      400,
+      "numberOfQuestions must be an integer between 1 and 20",
+    );
+  }
+
+  const session = await validateSessionOwnership(sessionId, req.user._id);
+
+  if (session.questions.length > 0) {
+    const populatedSession = await Session.findById(sessionId).populate(
+      "questions",
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Questions already existed for this session",
+      data: populatedSession?.questions || [],
+      reused: true,
     });
-    console.log("response: ", response);
+  }
 
-    const parts = response.candidates?.[0]?.content?.parts ?? [];
-    const rawText = parts
-      .filter((p) => !p.thought) // gemini-2.5-flash includes thinking parts; skip them
-      .map((p) => p.text ?? "")
-      .join("");
+  try {
+    const model = getGeminiModel();
+    const prompt = questionAnswerPrompt(
+      session.role,
+      session.experience,
+      session.topicsToFocus,
+      parsedCount,
+    );
 
-    const cleanedText = rawText
-      .replace(/^```json\s*/, "")
-      .replace(/^```\s*/, "")
-      .replace(/```$/, "")
-      .replace(/^json\s*/, "")
-      .trim();
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const parsed = parseJsonPayload(response.text(), "array");
 
-    let questions;
-    try {
-      questions = JSON.parse(cleanedText);
-    } catch {
-      const jsonMatch = cleanedText.match(/\[[\s\S]*\]/);
-      if (jsonMatch) questions = JSON.parse(jsonMatch[0]);
-      else throw new Error("Failed to parse AI response as JSON");
+    if (!Array.isArray(parsed)) {
+      throw createHttpError(502, "AI returned an unexpected response format");
     }
 
-    if (!Array.isArray(questions)) throw new Error("Response is not an array");
+    const validQuestions = parsed
+      .map((item) => ({
+        question: item?.question?.trim(),
+        answer: item?.answer?.trim() || "",
+      }))
+      .filter((item) => item.question);
 
-    //! 4. save to DB — was completely missing before
-    const saved = await Question.insertMany(
-      questions.map((q) => ({
-        session: sessionId,
-        question: q.question,
-        answer: q.answer || "",
+    if (!validQuestions.length) {
+      throw createHttpError(502, "AI returned no valid questions");
+    }
+
+    const savedQuestions = await Question.insertMany(
+      validQuestions.map((item) => ({
+        session: session._id,
+        question: item.question,
+        answer: item.answer,
         note: "",
         isPinned: false,
       })),
     );
 
-    //! 5. attach IDs to session
-    session.questions.push(...saved.map((q) => q._id));
+    session.questions = savedQuestions.map((question) => question._id);
     await session.save();
 
-    res.status(201).json({ success: true, data: saved });
+    return res.status(201).json({
+      success: true,
+      message: "Questions generated successfully",
+      data: savedQuestions,
+      reused: false,
+    });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to generate questions",
-      error: error.message,
-    });
+    throw normalizeAiError(error);
   }
-};
+});
 
-// @desc    Generate explanation for an interview question
-// @route   POST /api/ai/generate-explanation
-// @access  Private
-export const generateConceptExplanation = async (req, res) => {
+export const explainConcept = asyncHandler(async (req, res) => {
+  const { question } = req.body;
+
+  if (!question?.trim()) {
+    throw createHttpError(400, "Question is required");
+  }
+
   try {
-    const { question } = req.body;
+    const model = getGeminiModel();
+    const prompt = conceptExplainPrompt(question.trim());
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const explanation = parseJsonPayload(response.text(), "object");
 
-    if (!question) {
-      return res.status(400).json({
-        success: false,
-        message: "Question is required",
-      });
-    }
-
-    const prompt = conceptExplainPrompt(question);
-
-    const response = await ai.models.generateContent({
-      model: "gemini-2.0-flash-lite",
-      contents: prompt,
-    });
-
-    let rawText = response.text;
-
-    // Clean it: Remove backticks, json markers, and any extra formatting
-    const cleanedText = rawText
-      .replace(/^```json\s*/, "")
-      .replace(/^```\s*/, "")
-      .replace(/```$/, "")
-      .replace(/^json\s*/, "")
-      .trim();
-
-    // Parse the cleaned JSON
-    let explanation;
-    try {
-      explanation = JSON.parse(cleanedText);
-    } catch (parseError) {
-      // If parsing fails, try to extract JSON object from text
-      const jsonMatch = cleanedText.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        explanation = JSON.parse(jsonMatch[0]);
-      } else {
-        throw new Error("Failed to parse AI response as JSON");
-      }
-    }
-
-    // Validate the response structure
-    if (!explanation.title || !explanation.explanation) {
-      throw new Error(
-        "Response missing required fields: title and explanation",
+    if (!explanation?.title || !explanation?.explanation) {
+      throw createHttpError(
+        502,
+        "AI response is missing required explanation fields",
       );
     }
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       data: explanation,
     });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to generate explanation",
-      error: error.message,
-    });
+    throw normalizeAiError(error);
   }
-};
-
-export const getSessionById = async (req, res) => {
-  try {
-    const session = await Session.findById(req.params.id).populate("questions"); // ← this was missing
-
-    if (!session)
-      return res
-        .status(404)
-        .json({ success: false, message: "Session not found" });
-
-    res.status(200).json({ success: true, session });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-};
+});
