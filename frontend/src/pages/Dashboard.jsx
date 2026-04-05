@@ -75,7 +75,7 @@ const Dashboard = () => {
     <div className="relative overflow-hidden px-4 py-8 sm:px-6">
       <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_top_left,#fef3c7_0%,transparent_24%),radial-gradient(circle_at_bottom_right,#fecdd3_0%,transparent_26%),linear-gradient(180deg,#fffdf7_0%,#f8fafc_65%,#eef2ff_100%)]" />
       <div className="mx-auto max-w-6xl">
-        <section className="rounded-[32px] border border-white/70 bg-white/78 px-6 py-8 shadow-[0_28px_90px_-40px_rgba(15,23,42,0.35)] backdrop-blur-xl sm:px-8">
+        <section className="rounded-4xl border border-white/70 bg-white/78 px-6 py-8 shadow-[0_28px_90px_-40px_rgba(15,23,42,0.35)] backdrop-blur-xl sm:px-8">
           <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
             <div>
               <div className="inline-flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-4 py-2 text-xs font-semibold uppercase tracking-[0.28em] text-amber-700">
@@ -92,7 +92,7 @@ const Dashboard = () => {
               </p>
             </div>
 
-            <div className="rounded-[24px] border border-slate-200/80 bg-slate-50/80 px-5 py-4 text-sm text-slate-600">
+            <div className="rounded-3xl border border-slate-200/80 bg-slate-50/80 px-5 py-4 text-sm text-slate-600">
               <p className="font-semibold text-slate-900">{sessions.length}</p>
               <p>Session{sessions.length === 1 ? "" : "s"} in your prep library</p>
             </div>
@@ -132,7 +132,7 @@ const Dashboard = () => {
           <textarea
             placeholder="Add optional context, job description highlights, or weak areas you want to practice."
             value={description}
-            className="mt-4 min-h-28 w-full rounded-[24px] border border-slate-200 bg-white px-4 py-4 text-sm leading-7 text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-amber-300 focus:ring-4 focus:ring-amber-100"
+            className="mt-4 min-h-28 w-full rounded-3xl border border-slate-200 bg-white px-4 py-4 text-sm leading-7 text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-amber-300 focus:ring-4 focus:ring-amber-100"
             onChange={(e) => setDescription(e.target.value)}
           />
         </section>
