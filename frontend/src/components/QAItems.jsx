@@ -1,10 +1,14 @@
 import { useState } from "react";
-import { HiMiniChevronDown, HiMiniChevronUp } from "react-icons/hi2";
+import {
+  HiMiniChevronDown,
+  HiMiniChevronUp,
+  HiOutlineShare,
+} from "react-icons/hi2";
 import { PiPushPin, PiPushPinFill } from "react-icons/pi";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
-const QAItem = ({ item, index, onPin }) => {
+const QAItem = ({ item, index, onPin, onShare }) => {
   const [open, setOpen] = useState(index === 0);
 
   return (
@@ -43,6 +47,14 @@ const QAItem = ({ item, index, onPin }) => {
             ) : (
               <PiPushPin className="h-5 w-5" />
             )}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => onShare?.(item, index)}
+            className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-500 transition hover:border-slate-300 hover:text-slate-800"
+          >
+            <HiOutlineShare className="h-5 w-5" />
           </button>
 
           <button

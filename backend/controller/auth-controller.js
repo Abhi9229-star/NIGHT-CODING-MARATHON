@@ -81,3 +81,14 @@ export const loginUser = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+export const getCurrentUser = async (req, res) => {
+  res.status(200).json({
+    success: true,
+    user: {
+      _id: req.user._id,
+      name: req.user.name,
+      email: req.user.email,
+    },
+  });
+};

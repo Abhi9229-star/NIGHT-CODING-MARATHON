@@ -1,3 +1,5 @@
+import { clearStoredAuth } from "./authStorage";
+
 import axios from "axios";
 
 const axiosInstance = axios.create({
@@ -24,8 +26,7 @@ axiosInstance.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem("token");
-      window.dispatchEvent(new Event("auth-changed"));
+      clearStoredAuth();
 
       if (!window.location.pathname.startsWith("/login")) {
         window.location.href = "/login";

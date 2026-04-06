@@ -5,6 +5,7 @@ import { HiMiniArrowRight, HiMiniSparkles } from "react-icons/hi2";
 import { Link, useNavigate } from "react-router-dom";
 
 import { API_PATHS } from "../utils/apiPaths";
+import { setStoredUser } from "../utils/authStorage";
 import axios from "../utils/axiosInstance";
 
 const highlights = [
@@ -35,7 +36,11 @@ const Login = () => {
       setSubmitting(true);
       const res = await axios.post(API_PATHS.AUTH.LOGIN, form);
       localStorage.setItem("token", res.data.token);
-      window.dispatchEvent(new Event("auth-changed"));
+      setStoredUser({
+        _id: res.data._id,
+        name: res.data.name,
+        email: res.data.email,
+      });
       toast.success(`Welcome back, ${res.data.name}`);
       navigate("/dashboard");
     } catch (error) {

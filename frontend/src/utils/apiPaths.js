@@ -5,6 +5,7 @@ export const API_PATHS = {
   AUTH: {
     LOGIN: `${BASE_URL}/auth/login`,
     SIGNUP: `${BASE_URL}/auth/signup`,
+    ME: `${BASE_URL}/auth/me`,
   },
   SESSION: {
     CREATE: `${BASE_URL}/sessions/create`,

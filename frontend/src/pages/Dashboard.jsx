@@ -1,10 +1,16 @@
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
-import { HiMiniArrowRight, HiMiniSparkles } from "react-icons/hi2";
+import {
+  HiMiniArrowRight,
+  HiMiniEnvelope,
+  HiMiniSparkles,
+  HiMiniUserCircle,
+} from "react-icons/hi2";
 import { useNavigate } from "react-router-dom";
 
 import { API_PATHS } from "../utils/apiPaths";
+import { getStoredUser, setStoredUser } from "../utils/authStorage";
 import axiosInstance from "../utils/axiosInstance";
 
 const sessionCardVariants = {
@@ -24,6 +30,7 @@ const Dashboard = () => {
   const [description, setDescription] = useState("");
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
+  const [profile, setProfile] = useState(getStoredUser());
   const navigate = useNavigate();
 
   const fetchSessions = async () => {
@@ -69,6 +76,20 @@ const Dashboard = () => {
 
   useEffect(() => {
     fetchSessions();
+  }, []);
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const res = await axiosInstance.get(API_PATHS.AUTH.ME);
+        setProfile(res.data.user);
+        setStoredUser(res.data.user);
+      } catch (error) {
+        toast.error(error.response?.data?.message || "Failed to load profile");
+      }
+    };
+
+    fetchProfile();
   }, []);
 
   return (
@@ -135,6 +156,60 @@ const Dashboard = () => {
             className="mt-4 min-h-28 w-full rounded-3xl border border-slate-200 bg-white px-4 py-4 text-sm leading-7 text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-amber-300 focus:ring-4 focus:ring-amber-100"
             onChange={(e) => setDescription(e.target.value)}
           />
+        </section>
+
+        <section className="mt-6 grid gap-4 lg:grid-cols-[1.2fr_1fr]">
+          <div className="rounded-[30px] border border-white/70 bg-[linear-gradient(135deg,rgba(255,247,237,0.9),rgba(255,255,255,0.92))] p-6 shadow-[0_24px_70px_-42px_rgba(15,23,42,0.4)]">
+            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-amber-700">
+              Profile
+            </p>
+            <div className="mt-4 flex items-start gap-4">
+              <div className="flex h-14 w-14 items-center justify-center rounded-3xl bg-slate-950 text-white">
+                <HiMiniUserCircle className="h-7 w-7" />
+              </div>
+              <div>
+                <h2 className="text-2xl font-bold text-slate-950">
+                  {profile?.name || "NightMarathon User"}
+                </h2>
+                <div className="mt-3 inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm text-slate-600">
+                  <HiMiniEnvelope className="h-4 w-4 text-amber-600" />
+                  {profile?.email || "Email unavailable"}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-[30px] border border-slate-200/80 bg-white/85 p-6 shadow-[0_24px_70px_-44px_rgba(15,23,42,0.35)]">
+            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-slate-400">
+              Prep Snapshot
+            </p>
+            <div className="mt-4 grid gap-3 sm:grid-cols-3">
+              <div className="rounded-[22px] bg-slate-50 px-4 py-4">
+                <p className="text-xs uppercase tracking-[0.22em] text-slate-400">
+                  Sessions
+                </p>
+                <p className="mt-2 text-2xl font-bold text-slate-950">
+                  {sessions.length}
+                </p>
+              </div>
+              <div className="rounded-[22px] bg-slate-50 px-4 py-4">
+                <p className="text-xs uppercase tracking-[0.22em] text-slate-400">
+                  Ready
+                </p>
+                <p className="mt-2 text-2xl font-bold text-slate-950">
+                  {sessions.filter((session) => session.questions?.length).length}
+                </p>
+              </div>
+              <div className="rounded-[22px] bg-slate-50 px-4 py-4">
+                <p className="text-xs uppercase tracking-[0.22em] text-slate-400">
+                  Focus
+                </p>
+                <p className="mt-2 text-sm font-semibold text-slate-900">
+                  {sessions[0]?.topicsToFocus || "Add your target topics"}
+                </p>
+              </div>
+            </div>
+          </div>
         </section>
 
         <section className="mt-10">
