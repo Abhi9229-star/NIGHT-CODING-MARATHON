@@ -14,7 +14,7 @@ const app = express();
 const port = process.env.PORT || 9000;
 let isDatabaseConnected = false;
 
-const normalizeOrigin = (value = "") => value.trim().replace(/\/$/, "");
+const normalizeOrigin = (value = "") => value.trim().replace(/\/+$/, "");
 
 const allowedOrigins = [
   process.env.CLIENT_URL,
@@ -41,9 +41,9 @@ app.use(
     },
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
+    optionsSuccessStatus: 204,
   }),
 );
-app.options("*", cors());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
