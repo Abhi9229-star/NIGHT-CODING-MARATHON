@@ -13,6 +13,7 @@ dotenv.config();
 const app = express();
 const port = process.env.PORT || 9000;
 const allowedOrigin = process.env.CLIENT_URL || "http://localhost:5173";
+let isDatabaseConnected = false;
 
 app.use(
   cors({
@@ -21,6 +22,13 @@ app.use(
 );
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
+
+app.get("/", (_req, res) => {
+  res.status(200).json({
+    success: true,
+    message: "NightMarathon backend is running",
+  });
+});
 
 app.get("/api/health", (_req, res) => {
   res.status(200).json({ success: true, message: "Server is running" });
@@ -33,9 +41,22 @@ app.use("/api/ai", aiRoutes);
 app.use(notFound);
 app.use(errorHandler);
 
-const startServer = async () => {
+const ensureDatabaseConnection = async () => {
+  if (isDatabaseConnected) {
+    return;
+  }
+
   try {
     await connectDB();
+    isDatabaseConnected = true;
+  } catch (error) {
+    throw error;
+  }
+};
+
+const startServer = async () => {
+  try {
+    await ensureDatabaseConnection();
     app.listen(port, () => {
       console.log(`Server is running on port ${port}`);
     });
@@ -44,4 +65,11 @@ const startServer = async () => {
   }
 };
 
-startServer();
+if (process.env.VERCEL !== "1") {
+  startServer();
+}
+
+export default async function handler(req, res) {
+  await ensureDatabaseConnection();
+  return app(req, res);
+}
