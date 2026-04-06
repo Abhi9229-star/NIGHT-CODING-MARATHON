@@ -12,14 +12,38 @@ dotenv.config();
 
 const app = express();
 const port = process.env.PORT || 9000;
-const allowedOrigin = process.env.CLIENT_URL || "http://localhost:5173";
 let isDatabaseConnected = false;
+
+const normalizeOrigin = (value = "") => value.trim().replace(/\/$/, "");
+
+const allowedOrigins = [
+  process.env.CLIENT_URL,
+  process.env.FRONTEND_URL,
+  process.env.FRONTEND_URL_PRODUCTION,
+  process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "",
+  "http://localhost:5173",
+].filter(Boolean).map(normalizeOrigin);
 
 app.use(
   cors({
-    origin: allowedOrigin,
+    origin: (origin, callback) => {
+      if (!origin) {
+        return callback(null, true);
+      }
+
+      const normalizedOrigin = normalizeOrigin(origin);
+
+      if (allowedOrigins.includes(normalizedOrigin)) {
+        return callback(null, true);
+      }
+
+      return callback(new Error(`CORS blocked for origin: ${origin}`));
+    },
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
   }),
 );
+app.options("*", cors());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
