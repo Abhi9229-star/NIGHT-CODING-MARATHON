@@ -1,8 +1,10 @@
-const API_BASE_URL = (
-  import.meta.env.VITE_API_BASE_URL || "https://night-coding-marathon-hgsc.vercel.app"
-).replace(/\/$/, "");
+import { buildApiUrl, normalizeBaseUrl } from "./urlHelpers";
 
-const BASE_URL = `${API_BASE_URL}/api`;
+const API_BASE_URL = normalizeBaseUrl(
+  import.meta.env.VITE_API_BASE_URL || "https://night-coding-marathon-hgsc.vercel.app",
+);
+
+const BASE_URL = buildApiUrl(API_BASE_URL, "/api");
 
 export const API_PATHS = {
   AUTH: {
